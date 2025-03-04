@@ -1,0 +1,42 @@
+---
+title: "Project Proposal"
+format: html
+---
+
+```{r}
+library(tidyverse)
+library(here)
+```
+
+# Dow Jones Industrial Average Stock Market Price & Top 25 Daily News
+
+We were inspired by Pragadeesh Suresh Babu with his work on predicting stock rise with news (Can be found at https://github.com/pragadeeshsureshbabu/Predicting-stock-rise-with-news). We want to try using different machine learning algorithms to also investigate the relationship between news and stock market change.
+
+## Dataset
+
+```{r}
+setwd(here())
+DJIA <- read_csv("Data/DJIA/data/dow_jones_data.csv")
+news <- read_csv("Data/DJIA/data/news.csv")
+combined <- read_csv("Data/DJIA/data/combined_dataset.csv")
+```
+
+### DJIA Dataset
+
+The DJIA dataset comes from the daily stock market price change of Yahoo Finance. The data was retrieved using the Yahoo Finance API. The data was collected by summing up the market value of the Dow Jones Industrial Market for each day. The date range of the dataset was from 2016/01/04 to 2024/12/30. There are six variables in the dataset, which are **date**, **volume** (The volume of the market), **open** (The market value when the market opens), **close** (The market value when the market close), **high** (The highest market value of the day), and **low** (The lowest market value of the day).
+
+```{r}
+slice(DJIA, 3:7)
+```
+
+### News Dataset
+
+The news dataset is retrieved from the worldnews subreddit on reddit using the Reddit API. The top 25 most commented news are being downloaded for each date from 2016/01/01 to 2024/1/30. The dataset contains variables of **date**, **title** (news content), **score** (heat score on Reddit), **num_comments** (number of comments), **url** (the link to the discussion).
+
+```{r}
+slice(news, 1:5)
+```
+
+### Combined Dataset
+
+We then combine the two datasets together by the dates that present in both datasets. Each row would be represented by each row. The variables in the dataset are **date**, **volume** (The volume of the market), **open** (The market value when the market opens), **close** (The market value when the market close), **high** (The highest market value of the day), and **low** (The lowest market value of the day) and **title 1-25** (representing the top 25 news on a given date, ranks matter). The date range from 2016/01/04 to 2024/12/30.
