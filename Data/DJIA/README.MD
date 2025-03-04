@@ -29,7 +29,3 @@ This dataset contains historical stock market data for the Dow Jones Industrial 
 6. **volume** (`int`):  
    - Description: The total number of shares traded during the day.  
    - Unit: Number of shares  
-
-## Notes  
-- The dataset spans a specific date range, which should be checked for completeness.  
-- Missing values, if any, should be handled appropriately based on the analysis needs.
