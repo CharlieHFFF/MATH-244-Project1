@@ -37,7 +37,7 @@ slice(DJIA, 3:7) #slicing the DJIA data
 
 ### News Dataset
 
-The news dataset is retrieved from the worldnews subreddit on reddit using the Reddit API. The top 25 most commented news are being downloaded for each date from 2016/01/01 to 2024/1/30. The dataset contains variables of **date**, **title** (news content), **score** (heat score on Reddit), **num_comments** (number of comments), **url** (the link to the discussion).
+The news dataset is retrieved from the worldnews subreddit (https://www.reddit.com/r/worldnews/about/) on reddit using the Reddit API. The top 25 most commented news are being downloaded for each date from 2016/01/01 to 2024/1/30. The dataset contains variables of **date**, **title** (news content), **score** (heat score on Reddit), **num_comments** (number of comments), **url** (the link to the discussion).
 
 ```{r slicing_news_data}
 slice(news, 1:5) #slicing news data
@@ -45,7 +45,11 @@ slice(news, 1:5) #slicing news data
 
 ### Combined Dataset
 
-We then combine the two datasets together by the dates that present in both datasets. Each row would be represented by each row. The variables in the dataset are **date**, **volume** (The volume of the market), **open** (The market value when the market opens), **close** (The market value when the market close), **high** (The highest market value of the day), and **low** (The lowest market value of the day) and **title 1-25** (representing the top 25 news on a given date, ranks matter). The date range from 2016/01/04 to .2024/12/30.
+We then combine the two datasets together by the dates that present in both datasets. Each date would be represented by each row. The variables in the dataset are **date**, **volume** (The volume of the market), **open** (The market value when the market opens), **close** (The market value when the market close), **high** (The highest market value of the day), and **low** (The lowest market value of the day) and **title 1-25** (representing the top 25 news on a given date, ranks matter). The date range from 2016/01/04 to .2024/12/30.
+
+```{r slicing_combine_data}
+slice(combined, 1:5) #slicing news data
+```
 
 ## Research Question
 
