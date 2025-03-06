@@ -1,0 +1,87 @@
+---
+title: "Project Proposal"
+format: pdf
+author: "Feng Wan & YiNing Wang"
+date: "03/04/2024"
+execute: 
+  warning: false
+  message: false
+  echo: false
+---
+
+```{r loading_packages}
+library(tidyverse)
+library(here) #Library Packages
+```
+
+# Dow Jones Industrial Average Stock Market Price & Top 25 Daily News Analysis
+
+We were inspired by Pragadeesh Suresh Babu with his work on predicting stock rise with news (Can be found at https://github.com/pragadeeshsureshbabu/Predicting-stock-rise-with-news). We want to try using different machine learning algorithms to also investigate the relationship between news and stock market change.
+
+## Dataset
+
+```{r loading_data_proposal_1}
+setwd(here()) #set the working directory to the main directory of the project
+DJIA <- read_csv("Data/DJIA/data/dow_jones_data.csv") #Loading datasets
+news <- read_csv("Data/DJIA/data/news.csv")
+combined <- read_csv("Data/DJIA/data/combined_dataset.csv")
+```
+
+### DJIA Dataset
+
+The DJIA dataset comes from the daily stock market price change of Yahoo Finance. The data was retrieved using the Yahoo Finance API. The data was collected by summing up the market value of the Dow Jones Industrial Market for each day. The date range of the dataset was from 2016/01/04 to 2024/12/30. There are six variables in the dataset, which are **Date**, **Volume** (The volume of the market), **Open** (The market value when the market opens), **Close** (The market value when the market close), **High** (The highest market value of the day), and **Low** (The lowest market value of the day).
+
+```{r slicing_DJIA_data}
+slice(DJIA, 3:7) #slicing the DJIA data
+```
+
+### News Dataset
+
+The news dataset is retrieved from the worldnews subreddit (https://www.reddit.com/r/worldnews/about/) on reddit using the Reddit API. The top 25 most commented news are being downloaded for each date from 2016/01/01 to 2024/1/30. The dataset contains variables of **date**, **title** (news content), **score** (heat score on Reddit), **num_comments** (number of comments), **url** (the link to the discussion).
+
+```{r slicing_news_data}
+slice(news, 1:5) #slicing news data
+```
+
+### Combined Dataset
+
+We then combine the two datasets together by the dates that present in both datasets. Each date would be represented by each row. The variables in the dataset are **date**, **volume** (The volume of the market), **open** (The market value when the market opens), **close** (The market value when the market close), **high** (The highest market value of the day), and **low** (The lowest market value of the day) and **title 1-25** (representing the top 25 news on a given date, ranks matter). The date range from 2016/01/04 to .2024/12/30.
+
+```{r slicing_combine_data}
+slice(combined, 1:5) #slicing news data
+```
+
+## Research Question
+
+**Is the sentiment of the News influencing the Dow Jones Industrial Average stock market price for a given day?**
+
+With strong interest in stock markets, we are interested whether the public hype, represented by the news, would influence the stock market. Earning in stock is all about predicting others' mindsets and it seems intuitive that people and their stock market decisions are influenced by the News. With this in mind, we want to investigate whether there is actually a relationship between news and stock market.
+
+We put our focus on one of the biggest stock markets and the sentiments of the top 25 news on one of the largest discussion forums - Reddit, and analyze whether the sentiment of the news is affecting the average stock market price of the Dow Jones Market. We expect the relationship to be there based on our existing economic knowledge.
+
+# German Credit And Risk Analysis
+
+## Dataset
+
+```{r loading_credit_data}
+setwd(here()) #setting the working directory to the main directory of the project
+credit <- read_csv("Data/German Credit/data/german_credit_data.csv") #loading data
+```
+
+The dataset classifies a set of German people described by a set of attributes as good or bad credit risks. The dataset was found on the UC Irvine Machine Learning Repository (https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data) and was imported in python and saved locally. Each row represent a person's **attributes** and the labeled **credit classification** (binary variable with good credit score being 1 and bad credit score being 2). There are 20 attributes serving as independent variables for the model to use to predict the targets. There is a detailed code book in our github repository. The dataset was collected by Professor Hans Hofmann.
+
+```{r slicing_credit_data}
+slice(credit, 1:5) #slicing credit data
+```
+
+## Research Question
+
+**How to determine good or bad credit classification based on different attributes?**
+
+The research question comes from our interest in credit and risk assessment. Nowadays, risk assessments has became extremely important for banks and financial institutes in deciding whether to loan debts to an individual or a commercial using mathematical models. Many of the models are deeply founded in data science and machine learning algorithms. With the motive to try building our own risk assessment model, we would wanted to use different machine learning algorithms to try to predict the credit label of an individual with different associated attributes.
+
+Therefore, we found the German Credit Dataset, and looking forward to implement binary classification algorithms like XGBoost, Random Forest, or K-Neighbors and hopefully reach an acceptable performance.
+
+**Citations:**
+
+Hofmann, H. (1994). Statlog (German Credit Data) \[Dataset\]. UCI Machine Learning Repository. <https://doi.org/10.24432/C5NC77.>
