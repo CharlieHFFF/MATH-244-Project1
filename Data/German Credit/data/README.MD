@@ -76,7 +76,7 @@ The dataset is retrieved from UCI Machine Learning Repository (https://archive.i
 - **A124**: Unknown / no property  
 
 ### Attribute 13: Age in Years (Numerical)
-- **Description**: Age of the applicant.
+- **Description**: Age of the aadpplicant.
 
 ### Attribute 14: Other Installment Plans (Qualitative)
 - **A141**: Bank  
