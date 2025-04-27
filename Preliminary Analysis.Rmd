@@ -1,0 +1,460 @@
+---
+title: "Preliminary Analysis"
+output:
+  html_document: default
+  pdf_document: default
+  
+author: "Feng Wan & Yining Wang"
+date: "04/18/2025"
+execute: 
+  warning: false
+  message: false
+  echo: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  warning = FALSE,
+  message = FALSE,
+  echo = FALSE
+)
+```
+
+```{r}
+library(reticulate)
+```
+
+```{python}
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
+import xgboost as xg
+```
+
+```{python}
+data = pd.read_csv("Data/German Credit/data/german_credit_data.csv")
+```
+
+# Introduction
+Accurate credit risk assessment is essential for financial institutions seeking to make informed lending decisions. Traditionally, these assessments rely on standardized scoring systems and expert judgment. However, with the growing availability of structured credit data and advances in machine learning, predictive modeling has emerged as a valuable tool for evaluating borrower reliability with greater speed and objectivity.
+
+This project explores how supervised machine learning algorithms can be used to classify loan applicants as either good or bad credit risks. By leveraging historical data that captures key financial and demographic attributes, we aim to build models capable of generalizing to future applicants and supporting risk-aware decision-making in credit systems.
+
+The guiding research question is:
+**How effectively can individual-level financial and personal attributes be used to predict creditworthiness using classification algorithms?**
+
+To address this, we implement and compare a set of binary classification algorithms along with permutation—including Random Forest, XGBoost, K-Nearest Neighbors, and SVM—evaluating each model's accuracy and interpretability. In addition to assessing model performance, we also investigate the relative importance of various features in predicting credit outcomes, offering insights into which characteristics are most predictive of borrower behavior.
+
+This work contributes to the broader field of applied data science by demonstrating how classification techniques can be used to support socially and economically significant decisions such as consumer credit allocation.
+
+# Data
+## Source and Description
+The dataset used in this analysis is the German Credit Data from the UCI Machine Learning Repository, originally compiled by Professor Hans Hofmann. It comprises information on 1,000 individuals, each evaluated for credit risk, and is commonly used as a benchmark for credit scoring and classification tasks in machine learning.
+
+Each case represents a unique loan applicant. The associated variables describe financial and demographic characteristics believed to be relevant to assessing creditworthiness. The target variable classifies each applicant as either a good credit risk (1) or bad credit risk (2).
+
+## Data Collection 
+Key attributes include: 
+
+1. **Duration in months of credit**: Indicates the length of the credit agreement 
+a
+2. **Credit amount**: The total loan requested by the applicant
+
+3. **Installment rate**: Expressed as a percentage of the applicant’s disposable income
+
+4. **Savings account status**: A categorical indicator of the applicant’s financial reserves
+
+5. **Employment length**: Reflects job tenure and thus employment stability
+
+6. **Housing type**: Indicates whether the applicant rents
+
+7. **Job category**: Describes the type or status of the applicant’s employment
+
+8. **Personal status and sex**: Includes marital status and gender
+
+9. **Purpose of credit**: Indicates the intended use of the loan
+
+10. **Number of existing credits**: Reflects the applicant’s current debt load and borrowing behavior
+
+11. **Foreign worker status**: Identifies whether the applicant is a foreign national
+
+# Methodology
+
+```{python}
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+
+for col in data.select_dtypes(include='object').columns:
+    data[col] = LabelEncoder().fit_transform(data[col])
+    
+for col in data.columns:
+    if data[col].dtype == 'object':
+        data[col] = data[col].astype('category')
+        
+X = data.drop('target', axis=1)
+y = data['target']
+
+y[y == 2] = 0
+y[y == 1] = 1
+
+data_dmatrix = xg.DMatrix(data=X,label=y, enable_categorical=True)
+
+from sklearn.model_selection import train_test_split
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size = 0.3, random_state = 0)
+```
+
+## XGBoost Tree Structure
+
+XGBoost is selected due to its superior performance in structured data tasks, particularly for binary classification problems such as credit risk assessment. XGBoost is a scalable and efficient implementation of gradient boosting that has consistently delivered state-of-the-art results in numerous data science competitions and real-world applications. XGBoost can capture complex relationships. Creditworthiness is rarely determined by a single variable. XGBoost builds an ensemble of decision trees, allowing it to learn non-linear interactions between variables—such as how employment length might affect risk differently depending on credit amount or loan purpose. Also, XGBoost generates feature importance metrics that allow us to rank and interpret the predictive value of each variable, offering actionable insights for financial decision-making. 
+
+```{python}
+from xgboost import XGBClassifier
+
+
+# declare parameters
+params = {
+            'objective':'binary:logistic',
+            'max_depth': 4,
+            'alpha': 10,
+            'learning_rate': 1.0,
+            'n_estimators':100, 
+        }
+            
+            
+            
+# instantiate the classifier 
+xgb_clf = XGBClassifier(**params)
+
+
+
+# fit the classifier to the training data
+xgb_clf.fit(X_train, y_train)
+```
+
+```{python}
+y_pred_xgb = xgb_clf.predict(X_test)
+```
+
+```{python}
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred_xgb, digits=2))
+```
+
+From the classification report, we can see that for class 1 (bad credit risk), the model performed well with a precision of 0.80, recall of 0.88, and an F1-score of 0.84. This indicates the model is effective at correctly identifying high-risk individuals. For class 0 (good credit risk), the performance is noticeably weaker, with a recall of 0.44 and an F1-score of 0.51—meaning a considerable number of good applicants were misclassified as risky. This discrepancy likely reflects class imbalance or a model bias that favors predicting the majority class.
+
+The macro average F1-score is 0.67, and the weighted average is 0.74, suggesting decent overall performance but revealing an uneven ability to classify across both classes accurately.
+
+```{python}
+from xgboost import cv
+
+params = {"objective":"binary:logistic",'colsample_bytree': 0.3,'learning_rate': 0.1,
+                'max_depth': 5, 'alpha': 10}
+
+xgb_cv = cv(dtrain=data_dmatrix, params=params, nfold=3,
+                    num_boost_round=50, early_stopping_rounds=10, metrics="auc", as_pandas=True, seed=123)
+```
+
+```{python}
+xgb_cv
+```
+### auc score
+
+For the 'train-auc-mean', it started at approximately 0.66 and reached 0.82, indicating strong model learning capacity. 
+The 'test-auc-mean', it reaches a peak value of 0.76, which suggests that the model generalizes well to unseen data and is not severely overfitting.
+The standard deviation for both the training auc and the testing auc are all tends to be small, suggesting stability in performance across different data splits.
+
+### Feature Importance analysis
+
+```{python}
+xg.plot_importance(xgb_clf)
+plt.rcParams['figure.figsize'] = [6, 4]
+plt.title('Feature Importance from XGBoost')
+plt.show()
+```
+
+The feature importance plot reveals which variables contributed most frequently to splits in the XGBoost model’s decision trees. 
+
+For **Attribute2** (Duration in Month), **Attribute5** (Credit Amount), and **Attirbute4** (Purpose) scored the highest in terms of importance. These attributes were critical in the early splits of decision trees, indicating their strong predictive power.
+
+For **Attribute20** (Foreign Worker), **Attribute19** (Telephone), and ***Attribute11** (Present Residence Since) has the lowest predictting power. 
+
+### Permutation
+
+```{python}
+from sklearn.inspection import permutation_importance
+
+result = permutation_importance(xgb_clf, X_train, y_train, n_repeats=10, random_state=42)
+
+# View the results
+import pandas as pd
+
+perm_df = pd.DataFrame({
+    'Feature': X_train.columns,
+    'Importance Mean': result.importances_mean,
+    'Importance Std': result.importances_std
+}).sort_values(by='Importance Mean', ascending=False)
+```
+
+```{python}
+perm_df_sorted = perm_df.sort_values(by='Importance Mean', ascending=True)
+
+# Plot
+plt.figure(figsize=(10, 6))
+plt.barh(perm_df_sorted['Feature'], perm_df_sorted['Importance Mean'], xerr=perm_df_sorted['Importance Std'])
+plt.xlabel('Permutation Importance (mean decrease in score)')
+plt.title('Feature Importance via Permutation for XGBoost')
+plt.tight_layout()
+plt.show()
+```
+
+To further validate the importance of each feature in our classification task, we applied permutation importance, a model-agnostic method that measures how much the model’s performance metric deteriorates when each feature's values are randomly shuffled. From the bar plot, we can deduce: 
+
+For **Attribute1** (Status of Existing Checking Account), **Attribute2** (Duration in Month), and **Attribute5**(Credit Amount) yielded the largest mean drops in performance when permuted, indicating they are the most critical features for predicting credit risk in this model. 
+
+These results are broadly consistent with the earlier feature importance rankings from XGBoost’s internal metric, supporting their robustness. 
+
+## Random Forest
+
+We use Random Forest as a baseline model due to its strong performance on classification tasks involving structured, tabular data. As an ensemble of decision trees, Random Forest reduces overfitting by averaging multiple trees trained on random subsets of data and features. This makes it particularly robust to noise and well-suited for our credit dataset, which includes both categorical and numerical variables. Additionally, Random Forest provides feature importance metrics and supports permutation-based interpretability, which aligns with our goal of understanding which applicant attributes are most predictive of credit risk.
+
+### Random Forest Accuracy
+
+```{python}
+from sklearn.ensemble import RandomForestClassifier
+rf_classifier = RandomForestClassifier(n_estimators=100, random_state=42)
+rf_classifier.fit(X_train, y_train)
+```
+
+```{python}
+y_pred_rf = rf_classifier.predict(X_test)
+```
+
+```{python}
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred_rf, digits=2))
+```
+
+From the classification report, we can see that for class 1 (bad credit risk), the model performed strongly, with a precision of 0.81, recall of 0.90, and an F1-score of 0.85. This suggests the model is highly effective at identifying high-risk individuals. For class 0 (good credit risk), the performance was more modest, with recall dropping to 0.48 and an F1-score of 0.55—indicating that many good applicants were mistakenly classified as risky. This may be due to class imbalance or a tendency of the model to favor the majority class.
+
+The macro-average F1-score is 0.70 and the weighted-average F1-score is 0.77, reflecting decent overall performance but still showing room for improvement in detecting the minority class.
+
+### Feature Importance from Random Forest
+
+```{python}
+importances = rf_classifier.feature_importances_
+
+# Create a DataFrame for better viewing
+feature_importance_df = pd.DataFrame({
+    'Feature': X_train.columns,
+    'Importance': importances
+}).sort_values(by='Importance', ascending=False)
+```
+
+```{python}
+plt.figure(figsize=(10, 6))
+plt.barh(feature_importance_df['Feature'], feature_importance_df['Importance'])
+plt.gca().invert_yaxis()  # highest importance on top
+plt.xlabel('Importance')
+plt.title('Feature Importance from Random Forest')
+plt.show()
+```
+
+The feature importance plot generated from the trained Random Forest model ranks each attribute based on its relative contribution to reducing impurity (Gini importance) across all trees in the ensemble.
+
+For **Attribute5** (Credit Amount), **Attribute1** (Status of Existing Checking Account), and **Attribute2** (Duration in Months) stands out to be the most important, contributing the most to the model’s performance. These features likely hold significant information for distinguishing between good and bad credit risks.
+
+For **Attribute10** (Other Debtors / Guarantors), **Attribute18** (Number of People Being Liable to Provide Maintenance for), and **Attribute20** (Foreign Worker) have the lowest importance, contributing the least. 
+
+### Permutation
+
+```{python}
+from sklearn.inspection import permutation_importance
+
+result = permutation_importance(rf_classifier, X_train, y_train, n_repeats=10, random_state=42)
+
+# View the results
+import pandas as pd
+
+perm_df = pd.DataFrame({
+    'Feature': X_train.columns,
+    'Importance Mean': result.importances_mean,
+    'Importance Std': result.importances_std
+}).sort_values(by='Importance Mean', ascending=False)
+```
+
+```{python}
+perm_df_sorted = perm_df.sort_values(by='Importance Mean', ascending=True)
+
+# Plot
+plt.figure(figsize=(10, 6))
+plt.barh(perm_df_sorted['Feature'], perm_df_sorted['Importance Mean'], xerr=perm_df_sorted['Importance Std'])
+plt.xlabel('Permutation Importance (mean decrease in score)')
+plt.title('Feature Importance via Permutation for Random Forest')
+plt.tight_layout()
+plt.show()
+
+```
+
+The bar plot strongly aligns with the Feature Importance without Premutation. For **Attribute1** (Status of Existing Checking Account), **Attribute2** (Duration in Months), and **Attribute5** (Credit Amount) have the highest permutation importance in model accuracy when permuted, making them the most important for predicting credit risk. 
+
+Other features had smaller impacts, and some like **Attribute20** (Foreign Worker) had little to no effect, suggesting they may be less useful in this model. The black lines represent standard deviation across permutations and give a sense of consistency in the results.
+
+## Kneighbors
+
+The K-Nearest-Neighbors has a comparison model because it offers a simple, intuitive, and non-parametric approach to classification. KNN makes predictions based on the most similar data points in the training set, without making strong assumptions about the underlying data distribution. This allows us to explore how well instance-based learning performs on our credit risk dataset, where classification may depend on combinations of multiple features.
+
+### KNN Accuracy Score
+
+```{python}
+from sklearn import neighbors
+knn = neighbors.KNeighborsClassifier(n_neighbors=5)
+knn.fit(X_train, y_train)
+```
+
+```{python}
+y_pred_knn = knn.predict(X_test)
+```
+
+```{python}
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred_knn, digits=2))
+```
+
+From the classification report, we can see that for class 1 (bad credit risk), the model performed reasonably well with a precision of 0.74, recall of 0.84, and an F1-score of 0.79. This suggests the model is fairly effective at identifying high-risk individuals. However, for class 0 (good credit risk), the performance was significantly weaker—recall was just 0.27 and the F1-score only 0.32—indicating that many good applicants were incorrectly flagged as high-risk. This imbalance in performance likely reflects either class imbalance or a decision boundary favoring the majority class.
+
+The macro-average F1-score is 0.55 and the weighted-average is 0.65, pointing to a moderate overall performance but with a clear skew in how the model treats each class. 
+
+### Feature Importance with Premutation
+
+```{python}
+from sklearn.inspection import permutation_importance
+
+result = permutation_importance(knn, X_train, y_train, n_repeats=10, random_state=42)
+
+# View the results
+import pandas as pd
+
+perm_df = pd.DataFrame({
+    'Feature': X_train.columns,
+    'Importance Mean': result.importances_mean,
+    'Importance Std': result.importances_std
+}).sort_values(by='Importance Mean', ascending=False)
+```
+
+```{python}
+perm_df_sorted = perm_df.sort_values(by='Importance Mean', ascending=True)
+
+# Plot
+plt.figure(figsize=(10, 6))
+plt.barh(perm_df_sorted['Feature'], perm_df_sorted['Importance Mean'], xerr=perm_df_sorted['Importance Std'])
+plt.xlabel('Permutation Importance (mean decrease in score)')
+plt.title('Feature Importance via Permutation for KNN')
+plt.tight_layout()
+plt.show()
+
+```
+
+For the **Attribute5** (Credit Amount), it is by far the most important feature, showing the highest mean drop in accuracy when permuted. This suggests that KNN relies heavily on this feature when computing distances between instances.
+
+Most other features—including **Attribute11** (Present Residence Since), **Attribute10** (Other Debtors / Guarantors), and **Attribute14** (Other Installment Plans)—have near-zero importance, indicating that they had little to no impact on the model’s predictions.
+
+## SVM
+
+The SVM is a powerful and widely used algorithm for binary classification tasks, especially effective in high-dimensional feature spaces. SVM works by finding the optimal hyperplane that maximizes the margin between the two classes—in this case, good and bad credit risks.
+
+### SVM Accuracy Score and Classification Report
+
+```{python}
+from sklearn.svm import SVC
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.preprocessing import StandardScaler
+```
+
+```{python}
+# Normalilzed featureed
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+```
+
+```{python}
+# Initialize the SVM classifier
+svm_model = SVC(kernel='rbf', C=1.0, gamma='scale')
+
+# Train the model
+svm_model.fit(X_train, y_train)
+
+# Make predictions on the test set
+y_pred = svm_model.predict(X_test)
+```
+
+```{python}
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred, digits=2))
+```
+
+SVM achieved an accuracy of 0.77, meaning it correctly classified 77% of the test data. The AUC score is also 0.77, indicating that the model has strong discriminative power in separating good and bad credit risk cases.
+
+From the classification report, we can see that for **class 1** (bad credit risk), the model performed well with a precision of 0.81, recall of 0.89, and an F1-score of 0.85. This suggests the model is effective at identifying high-risk individuals. For **class 0** (good credit risk), performance was weaker, with recall dropping to 0.48, meaning more false negatives (good applicants misclassified as risky). This could reflect class imbalance or a margin-maximizing bias toward the majority class.
+The **macro average F1-score** is 0.69, and the weighted average is 0.76, showing decent overall performance but highlighting some imbalance between the two classes.
+
+### Feature Importance with Permutation
+
+```{python}
+from sklearn.inspection import permutation_importance
+
+result = permutation_importance(
+    svm_model, X_test, y_test, n_repeats=10, random_state=42, n_jobs=-1
+)
+
+# Plot
+importances = result.importances_mean
+std = result.importances_std
+indices = np.argsort(importances)[::-1]
+
+plt.figure(figsize=(10, 6))
+plt.title("Feature Importance via Permutation for SVM")
+plt.bar(range(X_test.shape[1]), importances[indices], yerr=std[indices], align="center")
+plt.xticks(range(X_test.shape[1]), X.columns[indices], rotation=90)
+plt.tight_layout()
+plt.show()
+```
+
+**Attirbute1** (Status of Existing Checking Account) stands out as the most important feature, with a noticeable mean decrease in score and relatively wide confidence bounds. Other top contributors include **Attribute2** (Duration in Months), **Attribute6** (Savings Account/Bonds), and **Attribute8** (Installment Rate), which all caused moderate drops in performance when permuted.
+
+# Result
+
+To address our research question—how accurately can we classify credit risk using financial and demographic features—we applied four machine learning models: XGBoost, Random Forest, K-Nearest Neighbors (KNN), and Support Vector Machine (SVM). 
+
+Each model revealed insights into which features were most informative:
+
+1. **XGBoost** highlighted **Attribute2**, **Attribute5**, and **Attribute4** as top contributors.
+
+2. **Random Forest** (standard and permutation) consistently ranked **Attribute1**, **Attribute2**, and **Attribute5** as most important.
+
+3. **KNN** relied heavily on **Attribute5**, with little contribution from other variables—highlighting its sensitivity to local distance and feature scaling.
+
+4. **SVM** showed **Attribute1**, **Attribute2**, and **Attribute6** as having the strongest influence on classification outcomes.
+
+### Interpretation
+
+**XGBoost** and **Random Forest** were the most balanced models in terms of accuracy and interpretability.
+
+**SVM** offered high recall for detecting bad credit risk, making it valuable for applications where minimizing false negatives is critical.
+
+**KNN**, while conceptually simple, underperformed and demonstrated reliance on a single key feature, making it less robust for this task.
+
+# Discussion
+
+Our goal was to classify individuals as good or bad credit risks using machine learning. Among the models we tested, **Random Forest** and **SVM** performed best, each achieving about 77% accuracy. **SVM** also had strong recall for detecting high-risk individuals. Feature importance analysis consistently highlighted **Attribute1**, **Attribute2**, and **Attribute5** as key predictors.
+
+While the models performed well on the dataset, there are limitations. The data is small, from a single country and time period, which restricts generalizability. Without an external dataset, we cannot guarantee that the model will perform similarly on new data.
+
+Ethically, credit scoring models must be used carefully. Poorly designed models can amplify existing biases or unfairly penalize individuals. However, if properly validated, such models can support fairer and faster lending decisions.
+
+Moreover, we acknowledge that there are more binary classification models that could be used like logistic regression. However, we are not applying logistic regression because it assumes a linear decision boundary, which may be too simplistic for this credit classification task where the relationship between features and class labels (good vs. bad credit risk) is likely nonlinear and complex.
+
+In future work, we suggest testing on larger and more recent datasets, applying fairness checks, and improving interpretability through tools like SHAP. Moreover, another improvement is to do feature processing, dropping attributes with small permutation importance and examine that would actually improve the model performance. However, we decided not to do that because the error bars for most of them are beyond 0 boundary, which means that these features are not definitely negatively impacting the model performance. However, we acknowledge that that's certainly something worth trying. 
